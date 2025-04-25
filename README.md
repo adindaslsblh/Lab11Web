@@ -37,4 +37,5 @@ Untuk melakukan instalasi Codeigniter 4 dapat dilakukan dengan dua cara, yaitu c
 • Ubah nama direktory framework-4.x.xx menjadi ci4.
 
 • Buka browser dengan alamat http://localhost/lab11_ci/ci4/public/
-(gambar)
+
+https://photos.app.goo.gl/xkeJ73iVviMGM83Z6 
