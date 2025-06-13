@@ -7,6 +7,10 @@
 * [Lihat Praktikum 5](#praktikum-5-pagination-dan-pencarian)
 * [Lihat Praktikum 6](#praktikum-6-upload-file-gambar)
 * [Lihat Praktikum 7](#praktikum-7-relasi-tabel-dan-query-builder)
+* [Lihat Praktikum 8](#praktikum-8-ajax)
+* [Lihat Praktikum 9](#praktikum-9-implementasi-ajax-pagination-dan-search)
+* [Lihat Praktikum 10](#praktikum-10-api)
+* [Lihat Praktikum 11](#praktikum-11-vuejs)
 
 
 # Praktikum 1: PHP Framework (code Igniter)
@@ -1085,7 +1089,8 @@ php spark db:seed UserSeeder
 ### Uji Coba Login
 Selanjutnya buka url http://localhost:8080/user/login seperti berikut:
 ![alt text](<screenshots/p4/p4-3.PNG>)
-
+username : `admin@email.com`
+password : `admin123`
 
 ### Menambahkan Auth Filter
 Selanjutnya membuat filer untuk halaman admin. Buat file baru dengan nama **Auth.php** pada direktori `app/Filters`. 
@@ -1681,3 +1686,1041 @@ Edit file **detail.php** pada `app/Views/artikel`.
 <?= $this->endSection() ?>
 ```
 ![alt text](<screenshots/p7/p7-9.PNG>)
+
+---
+
+# Praktikum 8: AJAX
+## Tujuan
+1. Memahami konsep AJAX dan cara kerjanya. 
+2. Mampu mengimplementasikan AJAX pada aplikasi web dengan CodeIgniter 4. 
+3. Melatih kemampuan problem solving dan debugging.
+## Instruksi Praktikum
+1. Persiapkan text editor misalnya VSCode. 
+2. Buka kembali folder dengan nama lab7_php_ci pada docroot webserver (htdocs) 
+3. Ikuti langkah-langkah praktikum yang akan dijelaskan berikutnya. 
+## Apa itu AJAX?
+**AJAX** merupakan singkatan dari ***Asynchronous JavaScript*** and ***XML***. Meskipun kepanjangannya menyebutkan XML, pada praktiknya AJAX tidak terbatas pada penggunaan XML saja. AJAX adalah kumpulan teknik pengembangan web yang memungkinkan aplikasi web bekerja secara **asynchronous** (tidak langsung). Dengan kata lain, AJAX memungkinkan aplikasi web untuk memperbarui dan menampilkan data dari server tanpa harus melakukan reload halaman secara keseluruhan. Hal ini membuat aplikasi web terasa lebih responsif dan dinamis. 
+
+### Cara Kerja AJAX 
+AJAX bekerja dengan cara berikut: 
+1. Event Trigger: 
+Pengguna melakukan suatu aksi di halaman web, misalnya menekan tombol atau mengetikkan sesuatu pada formulir. 
+2. Request Dikirim: 
+JavaScript di browser akan membuat request HTTP ke server. Request ini biasanya berupa request GET atau POST, dan bisa membawa data tambahan jika diperlukan. 
+3. Server Memproses Request: 
+Server menerima request dan memprosesnya sesuai dengan kebutuhan. Server bisa mengambil data dari database, melakukan kalkulasi tertentu, atau melakukan aksi lainnya. 
+4. Respon Dikembalikan: 
+Server mengirimkan respon kembali ke browser. Respon ini biasanya berupa data dalam format JSON (JavaScript Object Notation) atau format lainnya. 
+5. Data Ditampilkan: 
+JavaScript di browser menerima respon dari server. JavaScript kemudian memproses data tersebut dan memperbarui bagian tertentu dari halaman web tanpa perlu melakukan reload keseluruhan. 
+
+### Keuntungan menggunakan AJAX: 
+* Meningkatkan User Experience (UX): Hal ini karena halaman web tidak perlu dimuat ulang setiap kali ada interaksi pengguna, sehingga membuat aplikasi web terasa lebih responsif dan dinamis. 
+* Menghemat Bandwidth: Hanya data yang dibutuhkan yang dikirimkan antara browser dan server, sehingga menghemat bandwidth dan mempercepat loading halaman. 
+* Mempertahankan State Aplikasi: Dengan AJAX, state aplikasi (misalnya data yang sedang diedit) bisa dipertahankan walaupun halaman tidak di-reload. 
+
+### Contoh Penggunaan AJAX: 
+* Live chat applications 
+* Autocomplete suggestions 
+* Real-time updates (misalnya pada papan skor pertandingan olahraga) 
+* Validasi formulir secara real-time 
+* Dan masih banyak lagi 
+
+Dengan memahami konsep dan cara kerja AJAX, Anda dapat membuat aplikasi web yang lebih interaktif dan menarik bagi pengguna. 
+
+## Langkah-langkah Praktikum 
+### Persiapan 
+Buka Kembali project sebelumnya, kemudian kita tambahkan Pustaka yang dibutuhkan pada project tersebut. Menambahkan Pustaka jQuery. Kita akan menggunakan pustaka jQuery untuk mempermudah proses AJAX. Download pustaka jQuery versi terbaru dari https://jquery.com dan ekstrak filenya. Salin file jquery-3.7.1.min.js ke folder `public/assets/js`. 
+
+### Membuat Model.
+Pada modul sebelumnya sudah dibuat ArtikelModel, pada modul ini kita akan memanfaatkan model tersebut agar dapat diakses melalui AJAX.
+
+### Membuat Ajax Controller
+Sebelumnya kita sudah membuat `Artikel.php` pada Controller. Selanjutnya adalah menambahkan menthod **getData** dan mengubah method **delete**.
+pada `Artikel.php` tambahkan method berikut:
+
+```php
+public function getData()
+{
+    $model = new \App\Models\ArtikelModel();
+    $data = $model->getArtikelDenganKategori();
+    return $this->response->setJSON($data);
+}
+```
+lalu ubah method **delete** menjadi seperti ini:
+```php
+public function delete($id) 
+{ 
+    $model = new ArtikelModel(); 
+    $data = $model->delete($id); 
+
+    $data = [ 
+        'status' => 'OK' 
+    ]; 
+    return $this->response->setJSON($data); 
+}
+```
+
+### Membuat View
+Pada view sebelumnya sudah kita buat. Sekarang ubah file `admin_index.php` pada `Views/artikel`.
+
+```php
+<?= $this->include('template/admin_header'); ?>
+
+<h2><?= $title; ?></h2>
+
+
+<table class="styled-table" id="artikelTable">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Judul</th>
+            <th>Kategori</th>
+            <th>Status</th>
+            <th>Aksi</th>
+        </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+<script src="<?= base_url('assets/js/jquery-3.7.1.min.js') ?>"></script> 
+
+<script> 
+    $(document).ready(function() { 
+        function showLoadingMessage() { 
+            $('#artikelTable tbody').html('<tr><td colspan="4">Loading data...</td></tr>');
+        } 
+
+        function loadData() { 
+            showLoadingMessage();
+
+            $.ajax({ 
+                url: "<?= base_url('ajax/getData') ?>", 
+                method: "GET", 
+                dataType: "json", 
+                success: function(data) { 
+                    var tableBody = ""; 
+                    for (var i = 0; i < data.length; i++) { 
+                        var row = data[i]; 
+                        tableBody += '<tr>'; 
+                        tableBody += '<td>' + row.id + '</td>'; 
+                        tableBody += '<td>' + row.judul + '</td>'; 
+                        tableBody += '<td>' + row.nama_kategori + '</td>';
+                        tableBody += '<td> -- </td>'; 
+                        tableBody += '<td>'; 
+                        tableBody += '<a href="<?= base_url('admin/artikel/edit/') ?>' + row.id + '" class="btn edit ">Edit</a>'; 
+                        tableBody += ' <a href="#" class="btn delete" data-id="' + row.id + '">Delete</a>'; 
+                        tableBody += '</td>'; 
+                        tableBody += '</tr>'; 
+                    } 
+                    $('#artikelTable tbody').html(tableBody); 
+                } 
+            }); 
+        } 
+
+        loadData(); 
+
+        $(document).on('click', '.delete', function(e) { 
+            e.preventDefault(); 
+            var id = $(this).data('id'); 
+
+            if (confirm('Apakah Anda yakin ingin menghapus artikel ini?')) { 
+                $.ajax({ 
+                    url: "<?= base_url('artikel/delete/') ?>" + id, 
+                    method: "DELETE", 
+                    success: function(data) { 
+                        loadData(); 
+                    }, 
+                    error: function(jqXHR, textStatus, errorThrown) { 
+                        alert('Error deleting article: ' + textStatus + errorThrown); 
+                    } 
+                }); 
+            } 
+            console.log('Delete button clicked for ID:', id); 
+        }); 
+    }); 
+</script> 
+<?= $this->include('template/admin_footer'); ?>
+
+```
+
+### Menambahkan Route
+Tambahkan route berikut di file `app/Config/Routes.php`.
+
+```php
+$routes->get('/ajax/getData', 'Artikel::getData');
+```
+
+Hasilnya akan seperti ini saat pertama kali halaman dimuat.
+![alt text](<screenshots/p8/p8-1.PNG>)
+
+Dan hasilnya setelah laman selesai dimuat. Datanya akan tampil:
+
+![alt text](<screenshots/p8/p8-2.PNG>)
+
+
+### Pertanyaan dan Tugas 
+Selesaikan programnya sesuai Langkah-langkah yang ada. Tambahkan fungsi untuk tambah dan ubah data. Anda boleh melakukan improvisasi. 
+
+### Laporan Praktikum 
+1. Melanjutkan praktikum sebelumnya pada repository dengan nama Lab11Web. 
+2. Kerjakan semua latihan yang diberikan sesuai urutannya. 
+3. Screenshot setiap perubahannya. 
+4. Update file README.md dan tuliskan penjelasan dari setiap langkah praktikum beserta screenshotnya. 
+5. Commit hasilnya pada repository masing-masing. 
+6. Kirim URL repository pada e-learning ecampus.
+
+---
+# Praktikum 9: Implementasi AJAX Pagination dan Search
+## Tujuan 
+1. Mahasiswa mampu memahami konsep dasar AJAX untuk pagination dan search. 
+2. Mahasiswa mampu mengimplementasikan pagination dan search menggunakan AJAX 
+dalam CodeIgniter 4. 
+3. Mahasiswa mampu meningkatkan performa dan User Experience (UX) aplikasi web. 
+ 
+## Instruksi Praktikum 
+1. Persiapkan text editor (VSCode). 
+2. Buka kembali folder proyek lab7_php_ci. 
+3. Ikuti langkah-langkah praktikum berikut. 
+ 
+## Langkah-langkah Praktikum 
+### 1. Persiapan 
+* Pastikan MySQL Server sudah berjalan. 
+* Buka database **lab_ci4**.
+* Pastikan tabel **artikel** dan **kategori** sudah ada dan terisi data. 
+* Pastikan library jQuery sudah terpasang atau dapat diakses melalui CDN.
+
+### 2. Modifikasi Controller Artikel 
+Ubah method **admin_index()** di **Artikel.php** untuk mengembalikan data dalam format 
+JSON jika request adalah AJAX. (Sama seperti modul sebelumnya).
+
+```php
+public function admin_index()
+    {
+        $title       = 'Daftar Artikel (Admin)';
+        $model       = new ArtikelModel();
+        $q           = $this->request->getVar('q') ?? '';
+        $kategori_id = $this->request->getVar('kategori_id') ?? '';
+        $page        = $this->request->getVar('page') ?? 1;
+
+        $builder = $model->table('artikel')
+            ->select('artikel.*, kategori.nama_kategori')
+            ->join('kategori', 'kategori.id_kategori = artikel.id_kategori');
+
+        if ($q != '') {
+            $builder->like('artikel.judul', $q);
+        }
+
+        if ($kategori_id != '') {
+            $builder->where('artikel.id_kategori', $kategori_id);
+        }
+
+        $artikel = $builder->paginate(3, 'default', $page);
+        $pager   = $model->pager;
+
+        $data = [
+            'title'       => $title,
+            'q'           => $q,
+            'kategori_id' => $kategori_id,
+            'artikel'     => $artikel,
+            'pager'       => $pager
+        ];
+
+        if ($this->request->isAJAX()) {
+            $data['pager'] = $pager->links(); 
+            return $this->response->setJSON($data);
+        } else {
+            $kategoriModel       = new KategoriModel();
+            $data['kategori']    = $kategoriModel->findAll();
+            return view('artikel/admin_index', $data);
+        }
+    }
+```
+
+ 
+**Penjelasan:** 
+* `$page = $this->request->getVar('page') ?? 1;`: Mendapatkan nomor 
+halaman dari request. Jika tidak ada, default ke halaman 1. 
+* `$builder->paginate(10, 'default', $page);`: Menerapkan pagination 
+dengan nomor halaman yang diberikan. 
+* `$this->request->isAJAX()`: Memeriksa apakah request yang datang adalah 
+AJAX. 
+* Jika AJAX, kembalikan data artikel dan pager dalam format JSON. 
+* Jika bukan AJAX, tampilkan view seperti biasa. 
+
+### 3. Modifikasi View (admin_index.php) 
+* Ubah view `admin_index.php` untuk menggunakan jQuery. 
+* Hapus kode yang menampilkan tabel artikel dan pagination secara langsung. 
+* Tambahkan elemen untuk menampilkan data artikel dan pagination dari AJAX. 
+* Tambahkan kode jQuery untuk melakukan request AJAX. 
+
+```php
+<?= $this->include('template/admin_header'); ?>
+
+<h2><?= $title; ?></h2>
+
+<div class="row mb-3">
+    <div class="col-md-6">
+        <form id="search-form" class="form-search">
+            <input type="text" name="q" id="search-box" value="<?= $q; ?>"
+                placeholder="Cari judul artikel" class="form-control mr-2">
+
+            <select name="kategori_id" id="category-filter">
+                <option value="">Semua Kategori</option>
+                <?php foreach ($kategori as $k): ?>
+                    <option value="<?= $k['id_kategori']; ?>" <?= ($kategori_id == $k['id_kategori']) ? 'selected' : ''; ?>>
+                        <?= $k['nama_kategori']; ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+
+            <input type="submit" value="Cari" class="btn btn-primary">
+        </form>
+    </div>
+</div>
+
+<div id="article-container"></div>
+<div id="pagination-container"></div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+    const articleContainer = $('#article-container');
+    const paginationContainer = $('#pagination-container');
+    const searchForm = $('#search-form');
+    const searchBox = $('#search-box');
+    const categoryFilter = $('#category-filter');
+
+    const fetchData = (url) => {
+        $.ajax({
+            url: url,
+            type: 'GET',
+            dataType: 'json',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            success: function(data) {
+                renderArticles(data.artikel);
+                renderPagination(data.pager); 
+            }
+
+        });
+    };
+
+    const renderArticles = (articles) => {
+        let html = '<table class="styled-table">';
+        html += '<thead><tr><th>ID</th><th>Judul</th><th>Kategori</th><th>Status</th><th>Aksi</th></tr></thead><tbody>';
+
+        if (articles.length > 0) {
+            articles.forEach(article => {
+                html += `
+                    <tr>
+                        <td>${article.id}</td>
+                        <td>
+                            <b>${article.judul}</b>
+                            <p><small>${article.isi.substring(0, 50)}</small></p>
+                        </td>
+                        <td>${article.nama_kategori}</td>
+                        <td>${article.status}</td>
+                        <td>
+                            <a class="btn edit" href="/admin/artikel/edit/${article.id}">Ubah</a>
+                            <a class="btn delete" onclick="return confirm('Yakin menghapus data?');" href="/admin/artikel/delete/${article.id}">Hapus</a>
+                        </td>
+                    </tr>
+                `;
+            });
+        } else {
+            html += '<tr><td colspan="5">Tidak ada data.</td></tr>';
+        }
+
+        html += '</tbody></table>';
+        articleContainer.html(html);
+    };
+
+    const renderPagination = (pagerHTML) => {
+        paginationContainer.html(pagerHTML);
+    };
+
+
+    searchForm.on('submit', function(e) {
+        e.preventDefault();
+        const q = searchBox.val();
+        const kategori_id = categoryFilter.val();
+        fetchData(`/admin/artikel?q=${q}&kategori_id=${kategori_id}`);
+    });
+
+    categoryFilter.on('change', function() {
+        searchForm.trigger('submit');
+    });
+
+    // Initial load
+    fetchData('/admin/artikel');
+});
+</script>
+
+<?= $this->include('template/admin_footer'); ?>
+```
+
+Hasilnya akan seperti ini:
+
+![alt text](<screenshots/p9/p9-1.PNG>)
+
+## Pertanyaan dan Tugas 
+1. Selesaikan semua langkah praktikum di atas. 
+2. Modifikasi tampilan data artikel dan pagination sesuai kebutuhan desain. 
+3. Tambahkan indikator loading saat data sedang diambil dari server. 
+4. Implementasikan fitur sorting (mengurutkan artikel berdasarkan judul, dll.) dengan AJAX. 
+## Laporan Praktikum 
+1. Lanjutkan praktikum pada repository Lab7Web. 
+2. Kerjakan semua latihan sesuai urutan. 
+3. Screenshot setiap perubahan dan hasil uji coba. 
+4. Update file README.md dengan penjelasan dan screenshot. 
+5. Commit hasil praktikum. 
+6. Kirim URL repository.
+
+---
+# Praktikum 10: API
+## Tujuan 
+1. Mahasiswa mampu memahami konsep dasar API. 
+2. Mahasiswa mampu memahami konsep dasar RESTFull. 
+3. Mahasaswa mampu membuat API menggunakan Framework Codeigniter 4. 
+## Instruksi Praktikum 
+1. Persiapkan text editor misalnya VSCode. 
+2. Buka kembali folder dengan nama lab7_php_ci pada docroot webserver (htdocs) 
+3. Ikuti langkah-langkah praktikum yang akan dijelaskan berikutnya. 
+
+## Apa itu REST API? 
+Representational State Transfer (REST) adalah salah satu desain arsitektur Application Programming Interface (API). API sendiri merupakan interface yang menjadi perantara yang menghubungkan satu aplikasi dengan aplikasi lainnya. 
+REST API berisi aturan untuk membuat web service dengan membatasi hak akses client yang mengakses API. Kenapa harus demikian? 
+Jika dianalogikan sebagai restoran, REST API adalah daftar menu. Pelanggan hanya bisa memesan sesuai daftar menu meskipun si koki (server) bisa membuatkan pesanan tersebut. 
+REST API bisa diakses atau dihubungkan dengan aplikasi lain. Oleh sebab itu, pembatasan dilakukan untuk melindungi database/resource yang ada di server. 
+
+### Cara kerja REST API menggunakan prinsip REST Server dan REST Client. 
+REST Server bertindak sebagai penyedia data/resource, sedangkan REST Client akan membuat HTTP request pada server dengan URI atau global ID. Nantinya, server akan memberikan response dengan mengirim kembali HTTP request yang diminta client. Nah, data yang dikirim maupun diterima ini biasanya berformat JSON. Itulah kenapa REST API mudah diintegrasikan dengan berbagai platform dengan bahasa pemrograman ataupun framework yang berbeda. Misalnya, Anda membuat backend project menggunakan REST API dengan bahasa pemrograman PHP. Nantinya, REST API tersebut bisa dihubungkan dengan frontend yang menggunakan Vue js. Pengembangan aplikasi tentu lebih cepat dan efisien, kan? Apalagi, cara membuat REST API juga mudah. Anda bisa menggunakan framework PHP seperti CodeIgniter.
+
+
+## Langkah-langkah Praktikum 
+### Persiapan 
+Periapan awal adalah mengunduh aplikasi REST Client, ada banyak aplikasi yang dapat digunakan untuk keperluan tersebut. Salah satunya adalah Postman. Postman – Merupakan aplikasi yang berfungsi sebagai REST Client, digunakan untuk testing REST API. Unduh apliasi Postman dari tautan berikut: 
+
+https://www.postman.com/downloads/  
+
+### Membuat Model. 
+Pada modul sebelumnya sudah dibuat ArtikelModel, pada modul ini kita akan memanfaatkan model tersebut agar dapat diakses melalui API.
+
+### Membuat REST Controller 
+Pada tahap ini, kita akan membuat file REST Controller yang berisi fungsi untuk menampilkan, menambah, mengubah dan menghapus data. Masuklah ke direktori `app\Controllers` dan buatlah file baru bernama **Post.php**. Kemudian, salin kode di bawah ini ke dalam file tersebut: 
+
+```php
+<?php
+
+namespace App\Controllers;
+
+use CodeIgniter\RESTful\ResourceController;
+use CodeIgniter\API\ResponseTrait;
+use App\Models\ArtikelModel;
+
+class Post extends ResourceController
+{
+    use ResponseTrait;
+
+    public function index()
+    {
+        $model = new ArtikelModel();
+        $data['artikel'] = $model->orderBy('id', 'DESC')->findAll();
+        return $this->respond($data);
+    }
+    public function create() 
+    { 
+        $model = new ArtikelModel(); 
+        $data = [ 
+            'judul' => $this->request->getVar('judul'), 
+            'isi'  => $this->request->getVar('isi'), 
+        ]; 
+        $model->insert($data); 
+        $response = [ 
+            'status'   => 201, 
+            'error'    => null, 
+            'messages' => [ 
+                'success' => 'Data artikel berhasil ditambahkan.' 
+            ] 
+        ]; 
+        return $this->respondCreated($response); 
+    }
+    
+    public function show($id = null)
+    {
+        $model = new ArtikelModel();
+        $data = $model->find($id); 
+        if ($data) {
+            return $this->respond($data);
+        }
+
+        return $this->failNotFound('Data tidak ditemukan.');
+    }
+
+    
+
+    public function update($id = null)
+    {
+        $model = new ArtikelModel();
+
+        $existingData = $model->find($id);
+        if (!$existingData) {
+            return $this->failNotFound('Data tidak ditemukan untuk diubah.');
+        }
+        parse_str($this->request->getBody(), $data);
+
+        $updateData = array_filter($data, function($value) {
+            return $value !== null && $value !== '';
+        });
+
+        if (empty($updateData)) {
+            return $this->fail('Tidak ada data yang dikirim untuk diubah.', 400);
+        }
+
+        $model->update($id, $updateData);
+
+        $response = [
+            'status'   => 200,
+            'error'    => null,
+            'messages' => [
+                'success' => 'Data artikel berhasil diubah.'
+            ]
+        ];
+        return $this->respond($response);
+    }
+
+  
+    public function delete($id = null)
+    {
+        $model = new ArtikelModel();
+
+        $data = $model->find($id);
+        if ($data) {
+            $model->delete($id);
+            $response = [
+                'status'   => 200,
+                'error'    => null,
+                'messages' => [
+                    'success' => 'Data artikel berhasil dihapus.'
+                ]
+            ];
+            return $this->respondDeleted($response);
+        }
+        
+        return $this->failNotFound('Data tidak ditemukan.');
+    }
+}
+```
+
+
+Kode diatas berisi 5 method, yaitu: 
+* **index()** – Berfungsi untuk menampilkan seluruh data pada database. 
+* **create()** – Berfungsi untuk menambahkan data baru ke database. 
+* **show()** – Berfungsi untuk menampilkan suatu data spesifik dari database. 
+* **update()** – Berfungsi untuk mengubah suatu data pada database. 
+* **delete()** – Berfungsi untuk menghapus data dari database.
+
+## Membuat Routing REST API 
+Untuk mengakses REST API CodeIgniter, kita perlu mendefinisikan route-nya terlebih dulu. Caranya, masuklah ke direktori `app/Config` dan bukalah file **Routes.php**. Tambahkan kode di bawah ini:
+
+```php
+$routes->resource('post'); 
+```
+
+Untuk mengecek route nya jalankan perintah berikut:
+```bash
+php spark routes
+```
+Selanjutnya akan muncul daftar route yang telah dibuat. 
+
+![alt text](<screenshots/p10/p10-0.PNG>)
+
+Seperti yang terlihat, satu baris kode routes yang di tambahkan akan menghasilkan banyak Endpoint. 
+Selanjutnya melakukan uji coba terhadap REST API CodeIgniter.
+
+### Testing REST API CodeIgniter 
+Buka aplikasi postman dan pilih create new → HTTP Request
+
+### Menampilkan Semua Data 
+Pilih method **GET** dan masukkan URL berikut:
+
+http://localhost:8080/post  
+
+Lalu, klik Send. Jika hasil test menampilkan semua data artikel dari database, maka pengujian berhasil.
+![alt text](<screenshots/p10/p10-1.PNG>)
+
+
+### Menampilkan Data Spesifik 
+Masih menggunakan method **GET**, hanya perlu menambahkan ID artikel di belakang URL seperti ini: 
+
+http://localhost:8080/post/13
+
+Selanjutnya, klik Send. Request tersebut akan menampilkan data artikel yang memiliki ID nomor 13 di database.
+![alt text](<screenshots/p10/p10-2.PNG>)
+
+
+### Mengubah Data  
+Untuk mengubah data, silakan ganti method menjadi **PUT**. Kemudian, masukkan URL artikel yang ingin diubah. Misalnya, ingin mengubah data artikel dengan ID nomor 2, maka masukkan URL berikut: 
+
+http://localhost:8080/post/13
+
+Selanjutnya, pilih tab **Body**. Kemudian, pilih **x-www-form-urlencoded**. Masukkan nama atribut tabel pada kolom **KEY** dan nilai data yang baru pada kolom **VALUE**. Kalau sudah, 
+klik **Send**.
+![alt text](<screenshots/p10/p10-3.PNG>)
+
+
+### Menambahkan Data 
+Anda perlu menggunakan method **POST** untuk menambahkan data baru ke database. 
+Kemudian, masukkan URL berikut: 
+
+http://localhost:8080/post 
+
+Pilih tab Body, lalu pilih **x-www-form-urlencoded**. Masukkan atribut tabel pada kolom KEY dan nilai data baru di kolom VALUE. Jangan lupa, klik Send.
+![alt text](<screenshots/p10/p10-4.PNG>)
+
+### Menghapus Data 
+Pilih method **DELETE** untuk menghapus data. Lalu, masukkan URL spesifik data mana yang ingin di hapus. Misalnya, ingin menghapus data nomor 22, maka URL-nya seperti ini: 
+
+http://localhost:8080/post/22
+
+Langsung saja klik Send, maka akan mendapatkan pesan bahwa data telah berhasil dihapus dari database.
+
+![alt text](<screenshots/p10/p10-5.PNG>)
+
+
+### Pertanyaan dan Tugas 
+Selesaikan programnya sesuai Langkah-langkah yang ada. Anda boleh melakukan improvisasi. 
+### Laporan Praktikum 
+1. Melanjutkan praktikum sebelumnya pada repository dengan nama Lab11Web. 
+2. Kerjakan semua latihan yang diberikan sesuai urutannya. 
+3. Screenshot setiap perubahannya. 
+4. Update file README.md dan tuliskan penjelasan dari setiap langkah praktikum beserta screenshotnya. 
+5. Commit hasilnya pada repository masing-masing. 
+6. Kirim URL repository pada e-learning ecampus.
+
+---
+# Praktikum 11: VueJS
+## Tujuan 
+1. Mahasiswa mampu memahami konsep dasar API. 
+2. Mahasiswa mampu memahami konsep dasar Framework VueJS. 
+3. Mahasaswa mampu membuat Frontend API menggunakan Framework VueJS 3. 
+## Instruksi Praktikum 
+1. Persiapkan text editor misalnya **VSCode**. 
+2. Buat folder dengan nama **lab8_vuejs** pada docroot webserver (**htdocs**) 
+3. Ikuti langkah-langkah praktikum yang akan dijelaskan berikutnya. 
+
+## Apa itu VueJS? 
+**VuesJS** merupakan sebuah framework JavaScript untuk membangun aplikasi web atau tampilan interface website agar lebih interaktif. VueJS dapat digunakan untuk membangun aplikasi berbasis user interface, seperti halaman web, aplikasi mobile, dan aplikasi desktop. 
+Framework ini juga menawarkan berbagai fitur, seperti reactive data binding, component based architecture, dan tools untuk membangun aplikasi skalabel. Fitur utamanya adalah rendering dan komposisi elemen, sehingga bila pengguna hendak membuat aplikasi yang lebih kompleks akan membutuhkan routing, state management, template, build-tool, dan lain sebagainya. 
+Adapun library VueJS berfokus pada view layer sehingga framework ini mudah untuk diimplementasikan dan diintegrasikan dengan library lain. Selain itu, VueJS juga terkenal mudah digunakan karena memiliki sintaksis yang sederhana dan intuitif, memungkinkan pengembang untuk membangun aplikasi web dengan mudah.
+
+Untuk lebih lengkapnya dapat dipelajari pada dokumentasinya pada websitenya 
+
+https://vuejs.org/guide/introduction  
+
+## Langkah-langkah Praktikum 
+### Persiapan 
+Untuk memulai penggunaan framework Vuejs, dapat dialkukan dengan menggunakan npm, atau bisa juga dengan cara manual. Untuk praktikum kali ini kita akan gunakan cara manual. 
+Yang diperlukan adalah library Vuejs, Axios untuk melakukan call API REST. Menggunakan CDN. 
+
+**Library VueJS**
+```html
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+```
+**LLibrary Axios** 
+```html
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+```
+
+### Struktur Direktory 
+Buat Project baru dengan nama **Lab11Web_VueJS** di **htdocs** pada **XAMPP** dengan struktur file dan directory seperti berikut:
+
+```bash
+index.html
+assets
+├───css
+│   └─── style.css
+└───js
+    └─── app.js
+```
+
+Buat file **index.html** terlebih dahulu.
+
+**index.html**:
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Frontend Vuejs</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <button id="btn-tambah" @click="tambah">Tambah Data</button>
+
+    <div class="modal" v-if="showForm">
+      <div class="modal-content">
+        <span class="close" @click="showForm = false">&times;</span>
+        <form id="form-data" @submit.prevent="saveData">
+          <h3 id="form-title">{{ formTitle }}</h3>
+          <div><input type="text" name="judul" id="judul" v-model="formData.judul" placeholder="Judul" required /></div>
+          <div><textarea name="isi" id="isi" rows="10" v-model="formData.isi"></textarea></div>
+          <div>
+            <select name="status" id="status" v-model="formData.status">
+              <option v-for="option in statusOptions" :value="option.value">
+                {{ option.text }}
+              </option>
+            </select>
+          </div>
+          <input type="hidden" id="id" v-model="formData.id" />
+          <button type="submit" id="btnSimpan">Simpan</button>
+          <button type="button" @click="showForm = false">Batal</button>
+        </form>
+      </div>
+    </div>
+
+    <h1>Daftar Artikel</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Judul</th>
+          <th>Status</th>
+          <th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="(row, index) in artikel" :key="row.id">
+          <td class="center-text">{{ row.id }}</td>
+          <td>{{ row.judul }}</td>
+          <td>{{ statusText(row.status) }}</td>
+          <td class="center-text">
+            <a href="#" @click.prevent="edit(row)">Edit</a>
+            <a href="#" @click.prevent="hapus(index, row.id)">Hapus</a>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
+
+```
+
+Kemudian buat file **style.css** di direkotri `assets/css`.
+
+**style.css**:
+```css
+#app { 
+    margin: 0 auto; 
+    width: 900px; 
+} 
+table { 
+    min-width: 700px; 
+    width: 100%; 
+} 
+ 
+th { 
+    padding: 10px; 
+    background: #5778ff !important; 
+    color: #ffffff; 
+} 
+ 
+tr td { 
+    border-bottom: 1px solid #eff1ff; 
+} 
+ 
+tr:nth-child(odd) { 
+    background-color: #eff1ff; 
+} 
+ 
+td { 
+    padding: 10px; 
+} 
+ 
+.center-text { 
+    text-align: center; 
+} 
+ 
+td a { 
+    margin: 5px; 
+} 
+ 
+#form-data { 
+    width: 600px; 
+} 
+ 
+form input {
+    width: 100%; 
+    margin-bottom: 5px; 
+    padding: 5px; 
+    box-sizing: border-box; 
+} 
+ 
+form select { 
+    margin-bottom: 5px; 
+    padding: 5px; 
+    box-sizing: border-box; 
+} 
+ 
+form textarea { 
+    width: 100%; 
+    margin-bottom: 5px; 
+    padding: 5px; 
+    box-sizing: border-box; 
+} 
+ 
+form div { 
+    margin-bottom: 5px; 
+    position: relative; 
+} 
+ 
+form button { 
+    padding: 10px 20px; 
+    margin-top: 10px; 
+    margin-bottom: 10px; 
+    margin-right: 10px; 
+    cursor: pointer; 
+} 
+ 
+#btn-tambah { 
+    margin-bottom: 15px; 
+    padding: 10px 20px; 
+    cursor: pointer; 
+    background-color: #3152d6; 
+    color: #ffffff; 
+    border: 1px solid #3152d6; 
+ 
+} 
+ 
+#btnSimpan { 
+    background-color: #3152d6; 
+    color: #ffffff; 
+    border: 1px solid #3152d6; 
+} 
+ 
+.modal { 
+    display: block; 
+    position: fixed; 
+    z-index: 1; 
+    left: 0; 
+    top: 0; 
+    width: 100%; 
+    height: 100%; 
+    overflow: auto; 
+    background-color: rgba(0, 0, 0, 0.4); 
+  } 
+   
+  .modal-content { 
+    background-color: #fefefe; 
+    margin: 15% auto; 
+    padding: 20px; 
+    border: 1px solid #888; 
+    width: 600px; 
+  } 
+   
+  .close { 
+    color: #aaa; 
+    float: right; 
+    font-size: 28px; 
+    font-weight: bold; 
+    cursor: pointer; 
+  }
+```
+
+Terakhir buat file **app.js** di `assets/js`.
+
+**app.js**:
+
+```js
+const { createApp } = Vue
+
+const apiUrl = 'http://localhost:8080'
+
+createApp({
+  data() {
+    return {
+      artikel: [],
+      formData: {
+        id: null,
+        judul: '',
+        isi: '',
+        status: 0
+      },
+      showForm: false,
+      formTitle: 'Tambah Data',
+      statusOptions: [
+        { text: 'Draft', value: 0 },
+        { text: 'Publish', value: 1 }
+      ]
+    }
+  },
+  mounted() {
+    this.loadData()
+  },
+  methods: {
+    loadData() {
+      axios.get(apiUrl + '/post')
+        .then(response => {
+          this.artikel = response.data.artikel
+        })
+        .catch(console.log)
+    },
+    tambah() {
+      this.showForm = true
+      this.formTitle = 'Tambah Data'
+      this.formData = {
+        id: null,
+        judul: '',
+        isi: '',
+        status: 0
+      }
+    },
+    hapus(index, id) {
+      if (confirm('Yakin menghapus data?')) {
+        axios.delete(`${apiUrl}/post/${id}`)
+          .then(() => {
+            this.artikel.splice(index, 1)
+          })
+          .catch(console.log)
+      }
+    },
+    edit(data) {
+      this.showForm = true
+      this.formTitle = 'Ubah Data'
+      this.formData = { ...data }
+    },
+    saveData() { 
+        if (this.formData.id) { 
+            axios.put(apiUrl + '/post/'+this.formData.id, this.formData, {
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+            }) 
+            .then(response => { 
+                this.loadData() 
+            }) 
+            .catch(error => console.log(error)) 
+            console.log('Update item:', this.formData); 
+        } else { 
+            axios.post(apiUrl + '/post', this.formData) 
+            .then(response => { 
+                this.loadData() 
+            }) 
+            .catch(error => console.log(error)) 
+            console.log('Tambah item:', this.formData); 
+        } 
+
+        this.formData = { 
+            id: null, 
+            judul: '', 
+            isi: '', 
+            status: 0 
+        }; 
+
+        this.showForm = false; 
+    }, 
+      
+
+    statusText(status) {
+      return status === 1 ? 'Publish' : 'Draft'
+    }
+  }
+}).mount('#app')
+
+```
+
+### Jalankan VueJS
+
+Sekarang buka halaman http://localhost/Lab11Web_VueJS.
+Tampilannya akan menampilkan seperti berikut:
+
+![alt text](<screenshots/p11/p11-1.PNG>)
+
+Tampilan **Tambah Data**
+
+![alt text](<screenshots/p11/p11-2.PNG>)
+
+Tampilan **Hapus Data**
+
+![alt text](<screenshots/p11/p11-3.PNG>)
+
+Tampilan **Ubah Data**
+
+![alt text](<screenshots/p11/p11-4.PNG>)
+
+
+> Jika data tidak tampil atau aksi edit dan hapus tidak dapat dilakukan, terdapat beberapa masalah pada backend server.
+> **Masalah**:
+> 1. Jalankan server php CI sebelumnya.
+> 2. CORS Origin memblokir permintaan dari VueJS ke CI4
+
+
+**Solusi:**
+Aktifkan server php CI4 yang dibuat sebelumnya. Jika masih belum tampil, Filter Corsnya.
+
+
+### Mengaktifkan Filter pada Backend CI4
+
+Buat file **Cors.php** di `app/Filters`.
+
+```php
+
+<?php
+namespace App\Filters;
+
+use CodeIgniter\HTTP\RequestInterface;
+use CodeIgniter\HTTP\ResponseInterface;
+use CodeIgniter\Filters\FilterInterface;
+
+class Cors implements FilterInterface
+{
+    public function before(RequestInterface $request, $arguments = null)
+    {
+        header("Access-Control-Allow-Origin: *");
+        header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
+        header("Access-Control-Allow-Headers: Content-Type, Authorization");
+
+        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+            http_response_code(200);
+            exit();
+        }
+    }
+
+    public function after(RequestInterface $request, ResponseInterface $response, $arguments = null)
+    {
+        return $response;
+    }
+}
+
+?>
+```
+
+Kemudian daftarkan filter di `app/Config/Filters.php`.
+
+![alt text](<screenshots/p11/p11-5.PNG>)
+
+Aktifkan juga secara global:
+
+![alt text](<screenshots/p11/p11-6.PNG>)
+
+Kemudian jalankan kembali servernya. 
+
+
+### Pertanyaan dan Tugas 
+Selesaikan programnya sesuai Langkah-langkah yang ada. Anda boleh melakukan improvisasi. 
+### Laporan Praktikum 
+1. Melanjutkan praktikum sebelumnya pada repository dengan nama **Lab11Web_VueJS**. 
+2. Kerjakan semua latihan yang diberikan sesuai urutannya. 
+3. Screenshot setiap perubahannya. 
+4. Update file README.md dan tuliskan penjelasan dari setiap langkah praktikum beserta screenshotnya. 
+5. Commit hasilnya pada repository masing-masing. 
+6. Kirim URL repository pada e-learning ecampus
